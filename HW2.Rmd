@@ -1,0 +1,299 @@
+---
+title: "HW2"
+author: "Corey Kuhn"
+date: "2/6/2018"
+output: pdf_document
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Problem 1  
+
+$\delta_1(x) = x \frac{\mu_1}{\sigma^2} - \frac{\mu_1^2}{2\sigma^2} + log(\pi_1)$  
+$\delta_2(x) = x \frac{\mu_2}{\sigma^2} - \frac{\mu_2^2}{2\sigma^2} + log(\pi_2)$  
+
+Bayes classifier assigns an observation to class 1 if:  
+
+$$
+x \frac{\mu_1}{\sigma^2} - \frac{\mu_1^2}{2\sigma^2} + log(\pi_1) > x \frac{\mu_2}{\sigma^2} - \frac{\mu_2^2}{2\sigma^2} + log(\pi_2)
+$$  
+
+Assume $K=2$ and $\pi_1 = \pi_2$:  
+
+$$
+x \frac{\mu_1}{\sigma^2} - \frac{\mu_1^2}{2\sigma^2} > x \frac{\mu_2}{\sigma^2} - \frac{\mu_2^2}{2\sigma^2}
+$$  
+
+Multiply everything by $2\sigma^2$:  
+
+$$
+2x\mu_1 - \mu_1^2 > 2x\mu_2 - \mu_2^2
+$$  
+
+$$
+2x\mu_1 - 2x\mu_2 > \mu_1^2 - \mu_2^2
+$$  
+
+$$
+2x(\mu_1 - \mu_2) > \mu_1^2 - \mu_2^2
+$$  
+
+So, the decision boundary is at:
+
+$$
+2x(\mu_1 - \mu_2) = \mu_1^2 - \mu_2^2
+$$  
+
+Solve for $x$:  
+
+$$
+x = \frac{\mu_1^2 - \mu_2^2}{2(\mu_1 - \mu_2)}
+$$  
+
+$$
+x = \frac{(\mu_1 - \mu_2) (\mu_1 + \mu_2)}{2(\mu_1 - \mu_2)}
+$$  
+
+$$
+x = \frac{\mu_1 + \mu_2}{2}
+$$
+
+\newpage
+
+## Problem 2 - Chapter 5, Question 1
+
+We want to minimize $Var\big(\alpha X + (1 - \alpha)Y \big)$:  
+
+$$
+Var\big(\alpha X + (1 - \alpha)Y \big)
+$$
+
+$$
+= Var(\alpha X) + Var\big((1-\alpha)Y \big) + 2cov\big(\alpha X, (1-\alpha)Y \big)
+$$
+
+$$
+= \alpha^2 \sigma_X^2 + (1-\alpha)^2 \sigma_Y^2 + 2\alpha(1-\alpha) \sigma_{X,Y}
+$$
+
+$$
+= \alpha^2 \sigma_X^2 + (1-2\alpha+\alpha^2) \sigma_Y^2 + (2\alpha-2\alpha^2) \sigma_{X,Y}
+$$
+
+$$
+= \alpha^2 \sigma_X^2 + \sigma_Y^2-2\alpha\sigma_Y^2+\alpha^2\sigma_Y^2 + 2\alpha\sigma_{X,Y}-2\alpha^2\sigma_{X,Y}
+$$
+
+Now, take the derivative with respect to $\alpha$:
+
+$$
+\frac{d}{d\alpha}\big[\alpha^2 \sigma_X^2 + \sigma_Y^2-2\alpha\sigma_Y^2+\alpha^2\sigma_Y^2 + 2\alpha\sigma_{X,Y}-2\alpha^2\sigma_{X,Y}\big]
+$$
+
+$$
+= 2\alpha \sigma_X^2 + -2\sigma_Y^2+2\alpha\sigma_Y^2 + 2\sigma_{X,Y}-4\alpha\sigma_{X,Y}
+$$
+
+Now set the derivative equal to 0 and solve for $\alpha$:
+
+$$
+0 = 2\alpha \sigma_X^2 - 2\sigma_Y^2+2\alpha\sigma_Y^2 + 2\sigma_{X,Y}-4\alpha\sigma_{X,Y}
+$$
+
+$$
+0 = \alpha \sigma_X^2 -\sigma_Y^2+ \alpha\sigma_Y^2 + \sigma_{X,Y} - 2\alpha\sigma_{X,Y}
+$$
+
+$$
+\alpha \sigma_X^2 + \alpha\sigma_Y^2  - 2\alpha\sigma_{X,Y} = \sigma_Y^2 - \sigma_{X,Y}
+$$
+
+$$
+\alpha( \sigma_X^2 + \sigma_Y^2  - 2\sigma_{X,Y}) = \sigma_Y^2 - \sigma_{X,Y}
+$$
+
+$$
+\alpha = \frac{\sigma_Y^2 - \sigma_{X,Y}}{\sigma_X^2 + \sigma_Y^2  - 2\sigma_{X,Y}}
+$$
+
+\newpage
+
+## Problem 3 - Chapter 5, Question 3
+
+**Part (a)**  
+
+K-fold cross-validation starts by dividing the data into $k$ groups and using the first group as a validation set. The method is fit using all data except for those observations in the first fold. After the model is fit, the first fold is used to calculate the MSE. This process is repeated, holding each fold out of the model fitting one at a time, and then calculating the MSE on the hold-out fold. Then the $k$ calculated MSEs are averaged to get the $k$-fold CV estimate.  
+
+**Part (b)**  
+
+(i) Using $k$-fold cross validation over the validation set approach:  
+
+Advantage: $k$-fold cross validation uses more than one validation set. This is useful because the validation estimate of the test error can be highly variable, but by averaging the $k$ validation estimates, we get a more consistent estimate of the error. Also, in $k$-fold cross validation, all data is still utilized to fit the model, and more observations lead to more accurate models.
+
+Disadvantage: In $k$-fold cross validation, there is more computation required than for the typical validation set approach. 
+
+(ii) Using $k$-fold cross validation over LOOCV:  
+
+Advantage: $k$-fold cross validation requires less computation than LOOCV. It also has more accurate estimates of the test error rate and a lower variance than LOOCV.
+
+Disadvantage: $k$-fold cross validation has greater bias than LOOCV.
+
+\newpage
+
+## Problem 4 - Chapter 5, Question 8
+
+**Part (a)**  
+
+The model used to generate the data can be written as $Y = X - 2X^2 + \epsilon$ where $\epsilon$ is random error. $n = 100$ and $p = 1$.
+
+```{r}
+set.seed(1)
+y=rnorm(100)
+x=rnorm(100)
+y=x-2*x^2+rnorm(100)
+df <- data.frame(cbind(x,y))
+```
+
+\newprob
+
+**Part (b)**  
+
+The plot shows a quadratic relationship between $X$ and $Y$.
+\newln
+```{r}
+plot(x,y,main="Plot of Y vs. X")
+```
+
+\newprob
+
+**Part (c)**  
+
+See below for the LOOCV errors that result from fitting the four models.
+\newln
+```{r}
+# Fitting models and finding LOOCV errors for each
+library(boot)
+cv.error <- rep(0, 4)
+mods <- as.list(rep(NA,4))
+set.seed(123)
+for (i in 1:4){
+  mods[[i]] <- glm(y~poly(x, i), data=df)
+  cv.error[i] <- cv.glm(df, mods[[i]])$delta[1] 
+}
+cv.error
+```
+
+\newprob
+
+**Part (d)**  
+
+See below for the LOOCV errors that result from fitting the four models, using a different seed. The results are the same as in Part (a) because there is no randomness to this process, so it does not matter what seed we use. The results will always be the same for LOOCV since each observation always gets left out one at a time. We do not have different validation sets in LOOCV.
+\newln
+```{r}
+# Fitting models and finding LOOCV errors for each, using a different seed
+cv.error <- rep(0, 4)
+mods <- as.list(rep(NA,4))
+set.seed(1234)
+for (i in 1:4){
+  mods[[i]] <- glm(y~poly(x, i), data=df)
+  cv.error[i] <- cv.glm(df, mods[[i]])$delta[1] 
+}
+cv.error
+```
+
+\newprob
+
+**Part (e)**  
+
+The second model, $Y = \beta_0 + \beta_1X + \beta_2X^2 + \epsilon$, is the model with the smallest LOOCV error. This is what we would expect since we could see a quadratic pattern in the points on the scatterplot and because the points are being generated using a quadratic relationship with X.
+
+\newprob
+
+**Part (f)**  
+
+In model 1, the coeffient estimate of $X$ is not significant, but in all three of the other models, the coefficient estimates of $X$ and $X^2$ are significant, while the coeffient estimates of $X^3$ and $X^4$ are insignificant. This agrees with the conclusions drawn from LOOCV because this also suggests that there is a quadratic relationship between X and Y.
+\newln
+```{r}
+for (i in 1:4){
+  print(summary(mods[[i]]))
+}
+```
+
+\newpage
+
+## Problem 5
+
+We can see by looking at the confusion matrices for each method that using the Laplace distribution performs slightly better when classifying species of iris than using the Normal distribution. Using the Normal distribution, 4 versicolors are misclassified as virginicas, while using the Laplace distribution only 2 versicolors are misclassified as virginicas.
+
+The decision boundary using the Laplace distribution is much less gradual than the decision boundary using the Normal distribution. We can see this in the plot of the probabilities for each species using each method. 
+\newln
+```{r, fig.height=6}
+dat <- iris[iris$Species!="setosa",c(2,5)]
+pi.vers <- nrow(dat[dat=="versicolor",]) / nrow(dat)
+pi.virg <- 1 - pi.vers
+mu.vers <- mean(dat$Sepal.Width[dat$Species=="versicolor"])
+mu.virg <- mean(dat$Sepal.Width[dat$Species!="versicolor"])
+b.default <- sqrt((var(dat$Sepal.Width[dat$Species=="versicolor"]) + var(dat$Sepal.Width[dat$Species!="versicolor"])) / 2)
+
+# Density function assuming a Laplace distribution
+func <- function(x, mu, b=b.default){
+  (1 / (2*b)) * exp(-abs(x - mu) / b)
+}
+x.vals <- seq(min(dat$Sepal.Width), max(dat$Sepal.Width), length.out = 100)
+# Vectors containing values of f for different x values
+f.vers <- func(x.vals, mu.vers)
+f.virg <- func(x.vals, mu.virg)
+# Probablities of versicolor and virginica
+prob.vers <- rep(NA, 100)
+prob.virg <- rep(NA, 100)
+for (i in 1:100) {
+      prob.vers[i] <- (pi.vers * f.vers[i]) / (pi.vers * f.vers[i] + pi.virg * f.virg[i])
+      prob.virg[i] <- 1 - prob.vers[i]
+}
+
+# Probabilities assuming Normal density function
+library(MASS)
+dat$Species <- droplevels(dat$Species)
+datnew <- dat[order(dat$Sepal.Width),]
+lda.fit=lda(Species ~ Sepal.Width, data=datnew)
+lda.pred=predict(lda.fit, datnew)
+lda.vers <- lda.pred$posterior[,1]
+lda.virg <- lda.pred$posterior[,2]
+
+# Plotting probabilities
+plot(x.vals, prob.vers, type = "l", xlab = "x", ylab = "Probability", col = "red", main = "Probabilities of Versicolor and Virginica", ylim = c(0,1))
+lines(x.vals, prob.virg, col="blue")
+lines(datnew$Sepal.Width, lda.vers, col="red", lty=2)
+lines(datnew$Sepal.Width, lda.virg, col="blue", lty=2)
+legend(x=2.55, y=1, legend=c("Versicolor Normal", "Versicolor Laplace", "Virginica Normal", "Virginica Laplace"),col=c("red","red","blue","blue"),lty=c(2,1,2,1))
+
+# Confusion matrix Laplace
+laplace.class <- ifelse(prob.vers > prob.virg, "versicolor", "virginica")
+tab.dat.laplace <- table(laplace.class, dat$Species)
+# Confusion matrix Normal
+lda.class <- lda.pred$class
+tab.dat <- table(lda.class, dat$Species)
+# View matrices
+addmargins(tab.dat)
+addmargins(tab.dat.laplace)
+```
+
+
+
+

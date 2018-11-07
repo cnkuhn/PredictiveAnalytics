@@ -1,0 +1,339 @@
+---
+title: "HW4"
+author: "Corey Kuhn"
+date: "3/20/2018"
+output: pdf_document
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Problem 1 - Chapter 7, Question 10
+
+**Part(a)**
+
+Performing forward stepwise selection, we obtain the best 1-variable, 2-variable, ..., 17-variable models. To determine which model is best, we consider the highest adjusted $R^2$ value. Even though the model containing 12 predictor variables has the highest adjusted $R^2$ value, we go with the model that just contains 5 predictors, since the adjusted $R^2$ value increases very little after 5 predictors, and since we want to keep our model as simple as possible.
+\newln
+```{r}
+library(ISLR)
+attach(College)
+
+# Create train and test set
+set.seed(123)
+train_ind <- sample(c(TRUE,FALSE), nrow(College), rep=TRUE)
+train <- College[which(train_ind==TRUE),]
+test <- College[which(train_ind==FALSE),]
+
+# Forward stepwise
+library(leaps)
+forward_step <- regsubsets(Outstate ~ ., data=train, nvmax = length(names(train))-1, method="forward")
+summary(forward_step)
+
+# Select the variables by looking at which model performs best on test set
+forward_step_summary <- summary(forward_step)
+which(forward_step_summary$adjr2 == max(forward_step_summary$adjr2))
+forward_step_summary$adjr2
+```
+
+\newprob
+
+**Part(b)**
+
+Fitting the GAM, we used natural splines on all of the predictor variables except for Private. In the summary of the model, we see that all of the predictor variables are highly significant, since they all have a p-value much less than $\alpha=0.05$. The plots below show the partial relationships between each predictor variable and Outstate. 
+\newln
+```{r, fig.height=3}
+form <- formula(paste("Outstate ~ ", paste(names(coef(forward_step,5))[-c(1)], collapse=" + ")), collapse="+")
+form <- update(form, ~ . - PrivateYes + Private)
+library(gam)
+library(splines)
+gam1 <- gam(Outstate ~ Private + ns(Room.Board,3) + ns(PhD,3) + ns(perc.alumni,3) + ns(Expend,3), data=train)
+summary(gam1)
+par(mfrow=c(1,3))
+plot.gam(gam1, se=TRUE, col="red")
+```
+
+\newprob
+
+**Part (c)**  
+
+The model seems to fit the data fairly well, with an RMSE of 1871.984 evaluated on the test set. This means that on average, the model predicts within about 1,900 of out of state tuition for colleges. It is hard to completely evaluate the performance of a model without comparing to other models, so it would help to create another model to evaluate on the test set and compare its performance to this model.
+\newln
+```{r}
+preds <- predict(gam1, newdata=test)
+(rmse <- sqrt((1/length(preds))*sum((test$Outstate-preds)^2)))
+```
+
+
+\newprob
+
+**Part(d)**  
+
+Looking at the plots in part (b), we see strong evidence for a non-linear relationship between Outstate and Expend. PhD may also have a slight curvature in its relationship to Outstate, but the other predictors do not provide strong evidence of a non-linear relationship with Outstate.
+
+
+## Problem 2 - Chapter 7, Question 11
+
+See below for most parts to this question. Answering part (g) and (f) here, however, by looking at the plot of the coefficient estimates created in part (e), it looks like only 10 backfitting iterations or less were required in order to obtain a good approximation to the multiple regression coefficient estimates. The regression estimates obtained in part (f) were the same as ultimately obtained through backfitting, as we can see on the plot in part (f).
+\newln
+```{r}
+# Part (a)
+set.seed(1234)
+x1 <- rnorm(100, 5,3)
+x2 <- rpois(100, 8)
+y <- 2.3*x1 + 5.6*x2
+
+# Part (b)
+beta1 <- -56
+
+# Part (c)
+c <- y-beta1*x1
+beta2 <- lm(c~x2)$coef[2]
+
+# Part (d)
+d <- y-beta2*x2
+beta1 <- lm(d~x1)$coef[2]
+
+# Part (e)
+# Creating for loop - there are 2 values of beta0 generated each iteration, so these are saved in 2 different beta0 vectors
+nsim <- 1000
+beta0.c <- rep(NA,1000)
+beta0.d <- rep(NA,1000)
+beta1 <- rep(NA,1000)
+beta2 <- rep(NA,1000)
+beta2[1] <- lm(c~x2)$coef[2]
+beta1[1] <- lm(d~x1)$coef[2]
+for(i in 2:nsim){
+  c <- y-beta1[i-1]*x1
+  beta2[i] <- lm(c~x2)$coef[2]
+  beta0.c[i] <- lm(c~x2)$coef[1]
+  d <- y-beta2[i-1]*x2
+  beta1[i] <- lm(d~x1)$coef[2]
+  beta0.d[i] <- lm(d~x1)$coef[1]
+}
+# Plotting each value
+plot(beta1,col="red", main="Plot of Beta0, Beta1, and Beta2", type="l", ylim=c(0,6),ylab="Coefficient Estimates")
+lines(beta2, col="blue")
+lines(beta0.d, col="green")
+legend(600,5,col=c("green","red","blue"),legend=c("Beta0","Beta1","Beta2"),lty=1)
+
+# Part (f)
+(ml.beta0 <- lm(y~x1+x2)$coef[1])
+(ml.beta1 <- lm(y~x1+x2)$coef[2])
+(ml.beta2 <- lm(y~x1+x2)$coef[3])
+plot(beta1,col="red", main="Plot of Beta0, Beta1, and Beta2", type="l", ylim=c(0,6),ylab="Coefficient Estimates")
+lines(beta2, col="blue")
+lines(beta0.d, col="green")
+legend(600,5,col=c("green","red","blue"),legend=c("Beta0","Beta1","Beta2"),lty=1)
+abline(h=ml.beta0)
+abline(h=ml.beta1)
+abline(h=ml.beta2)
+```
+
+\newpage
+
+## Problem 4
+
+Below is a code for building a GAM to predict the unobserved values of y in this dataset. First, forward stepwise selection is used to determine which predictor variables to use, since all 25 variables would be too many to include in the model. The 5 variables chosen by forward stepwise selection include x1, x3, x5, x13, and x22.  
+
+Next, we decide whether to use polynomial regression or natural splines for each of the 5 predictors. We use cross-validation to choose the ideal order polynomial when predicting $y$ with $x1$. Looking at the cross-validation errors of orders up to 10, a polynomial of order 1 gives us the lowest cross-validation error. We then use cross-validation to choose the ideal number of degrees of freedom when fitting a natural spline to $x1$. Looking at the cross-validated RMSEs for each order up to 10, a natural spline with 1 degree of freedom is best. We then compare the square root of the cross-validation error obtained from the polynomial of order 1 to the cross-validation error obtained from the natural spline with 1 degree of freedom. Since the spline with 1 degree of freedom results in the lower RMSE, we determine that the spline is better for $x1$.
+
+We repeat this process for x3, x5, x13, and x22 to determine the best polynomial order and the best natural spline degrees of freedom, and then choose the method that results in a lower RMSE for each variable. We find that a spline with 1 degree of freedom is best for x3, x13, and x22, while a spline with 4 degrees of freedom is best for x5.
+
+Lastly, we fit a GAM to all of the observed values in the data that we have, using natural splines with their resepective degrees of freedom for the 5 predictor variables. Then we use this model to predict the 100 missing $y$ values in the data. The .csv file contains 2 columns - the first containing the id of the observations we are predicting, and the second containing the predicted_values using the fitted GAM model.
+\newln
+```{r, warning=FALSE, message=FALSE}
+# Load in data
+dat <- read.csv("~/Desktop/Desktop/Loyola Grad/Semester2/STAT488 - Predictive Analytics/HW4/PredictiveHW4Dataset.csv")
+a <- dat[1:900,]
+b <- dat[901:1000,]
+
+# Dimension reduction with stepwise - choose 5 most important variables
+library(leaps)
+forward_step <- regsubsets(y ~ ., data=a[,-c(27)], nvmax = length(names(a))-2, method="forward")
+summary(forward_step) # x1,3,5,13,22
+
+# Polynomial regression x1
+library(boot)
+cv.error <- rep(0,10)
+for (i in 1:10){
+  glm.fit <- glm(y~poly(x1,i),data=a)
+  set.seed(1234)
+  cv.error[i] <- cv.glm(a,glm.fit,K=10)$delta[1]
+}
+which(cv.error == min(cv.error)) # polynomial of order 1 is best
+
+# Natural spline x1
+library(splines)
+set.seed(1234)
+a.rand <- a[sample(nrow(a)),]
+folds <- cut(seq(1,nrow(a.rand)),breaks=10,labels=FALSE)
+cv.error.spline <- matrix(data=0, nrow=10, ncol=10)
+for(n in 1:10){
+  for(i in 1:10){
+    testIndexes <- which(folds==i,arr.ind=TRUE)
+    testData <- a.rand[testIndexes, ]
+    trainData <- a.rand[-testIndexes, ]
+    fit1 <- lm(y~ns(x1,n), data=trainData)
+    preds <- predict(fit1,testData)
+    cv.error.spline[i,n] <- sqrt(mean((testData$y-preds)^2))
+    }
+}
+av.rmse <- apply(cv.error.spline,2,mean)
+which(av.rmse == min(av.rmse)) # spline with df = 1 is best
+
+# Choose spline or poly regression based on lower rmse --> spline is better for x1
+sqrt(min(cv.error))
+min(av.rmse)
+
+
+# Polynomial regression x3
+cv.error <- rep(0,10)
+for (i in 1:10){
+  glm.fit <- glm(y~poly(x3,i),data=a)
+  set.seed(1234)
+  cv.error[i] <- cv.glm(a,glm.fit,K=10)$delta[1]
+}
+which(cv.error == min(cv.error)) # polynomial of order 1 is best
+
+# Natural spline x3
+set.seed(1234)
+a.rand <- a[sample(nrow(a)),]
+folds <- cut(seq(1,nrow(a.rand)),breaks=10,labels=FALSE)
+cv.error.spline <- matrix(data=0, nrow=10, ncol=10)
+for(n in 1:10){
+  for(i in 1:10){
+    testIndexes <- which(folds==i,arr.ind=TRUE)
+    testData <- a.rand[testIndexes, ]
+    trainData <- a.rand[-testIndexes, ]
+    fit1 <- lm(y~ns(x3,n), data=trainData)
+    preds <- predict(fit1,testData)
+    cv.error.spline[i,n] <- sqrt(mean((testData$y-preds)^2))
+    }
+}
+av.rmse <- apply(cv.error.spline,2,mean)
+which(av.rmse == min(av.rmse)) # spline with df = 1 is best
+
+# Choose spline or poly regression based on lower rmse --> spline is better for x3
+sqrt(min(cv.error))
+min(av.rmse)
+
+
+# Polynomial regression x5
+cv.error <- rep(0,10)
+for (i in 1:10){
+  glm.fit <- glm(y~poly(x5,i),data=a)
+  set.seed(1234)
+  cv.error[i] <- cv.glm(a,glm.fit,K=10)$delta[1]
+}
+which(cv.error == min(cv.error)) # polynomial of order 2 is best
+
+# Natural spline x5
+set.seed(1234)
+a.rand <- a[sample(nrow(a)),]
+folds <- cut(seq(1,nrow(a.rand)),breaks=10,labels=FALSE)
+cv.error.spline <- matrix(data=0, nrow=10, ncol=10)
+for(n in 1:10){
+  for(i in 1:10){
+    testIndexes <- which(folds==i,arr.ind=TRUE)
+    testData <- a.rand[testIndexes, ]
+    trainData <- a.rand[-testIndexes, ]
+    fit1 <- lm(y~ns(x5,n), data=trainData)
+    preds <- predict(fit1,testData)
+    cv.error.spline[i,n] <- sqrt(mean((testData$y-preds)^2))
+    }
+}
+av.rmse <- apply(cv.error.spline,2,mean)
+which(av.rmse == min(av.rmse)) # spline with df = 4 is best
+
+# Choose spline or poly regression based on lower rmse --> spline is better for x5
+sqrt(min(cv.error))
+min(av.rmse)
+
+
+# Polynomial regression x13
+cv.error <- rep(0,10)
+for (i in 1:10){
+  glm.fit <- glm(y~poly(x13,i),data=a)
+  set.seed(1234)
+  cv.error[i] <- cv.glm(a,glm.fit,K=10)$delta[1]
+}
+which(cv.error == min(cv.error)) # polynomial of order 2 is best
+
+# Natural spline x13
+set.seed(1234)
+a.rand <- a[sample(nrow(a)),]
+folds <- cut(seq(1,nrow(a.rand)),breaks=10,labels=FALSE)
+cv.error.spline <- matrix(data=0, nrow=10, ncol=10)
+for(n in 1:10){
+  for(i in 1:10){
+    testIndexes <- which(folds==i,arr.ind=TRUE)
+    testData <- a.rand[testIndexes, ]
+    trainData <- a.rand[-testIndexes, ]
+    fit1 <- lm(y~ns(x13,n), data=trainData)
+    preds <- predict(fit1,testData)
+    cv.error.spline[i,n] <- sqrt(mean((testData$y-preds)^2))
+    }
+}
+av.rmse <- apply(cv.error.spline,2,mean)
+which(av.rmse == min(av.rmse)) # spline with df = 1 is best
+
+# Choose spline or poly regression based on lower rmse --> spline is better for x13
+sqrt(min(cv.error))
+min(av.rmse)
+
+
+# Polynomial regression x22
+cv.error <- rep(0,10)
+for (i in 1:10){
+  glm.fit <- glm(y~poly(x22,i),data=a)
+  set.seed(1234)
+  cv.error[i] <- cv.glm(a,glm.fit,K=10)$delta[1]
+}
+which(cv.error == min(cv.error)) # polynomial of order 1 is best
+
+# Natural spline x13
+set.seed(1234)
+a.rand <- a[sample(nrow(a)),]
+folds <- cut(seq(1,nrow(a.rand)),breaks=10,labels=FALSE)
+cv.error.spline <- matrix(data=0, nrow=10, ncol=10)
+for(n in 1:10){
+  for(i in 1:10){
+    testIndexes <- which(folds==i,arr.ind=TRUE)
+    testData <- a.rand[testIndexes, ]
+    trainData <- a.rand[-testIndexes, ]
+    fit1 <- lm(y~ns(x22,n), data=trainData)
+    preds <- predict(fit1,testData)
+    cv.error.spline[i,n] <- sqrt(mean((testData$y-preds)^2))
+    }
+}
+av.rmse <- apply(cv.error.spline,2,mean)
+which(av.rmse == min(av.rmse)) # spline with df = 1 is best
+
+# Choose spline or poly regression based on lower rmse --> spline is better for x22
+sqrt(min(cv.error))
+min(av.rmse)
+
+
+# Fit GAM using splines for all 5 predictors
+gam.mod <- lm(y~ns(x1,1) + ns(x3,1) + ns(x5,4) + ns(x13,1) + ns(x22,1), data=a)
+preds <- predict(gam.mod, newdata=b)
+preds.file <- cbind(b$id, preds)
+colnames(preds.file) <- c("id","predicted_values")
+# write.csv(preds.file,"preds.csv",row.names=FALSE)
+```
+

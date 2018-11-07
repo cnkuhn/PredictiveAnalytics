@@ -1,0 +1,346 @@
+---
+title: "HW7"
+author: "Corey Kuhn"
+date: "4/10/2018"
+output: pdf_document
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Problem 1 - Chapter 9, Exercise 3 code
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+library(e1071)
+dat <- as.data.frame(cbind(X1 = c(3,2,4,1,2,4,4), X2 = c(4,2,4,4,1,3,1), Y=c("red","red","red","red","blue","blue","blue")))
+dat$X1 <- as.numeric(dat$X1)
+dat$X2 <- as.numeric(dat$X2)
+svmfit <- svm(Y~., data = dat, kernel="linear", cost=100, scale=FALSE)
+(coefs <- svmfit$coefs)
+
+svmfit2 <- svm(Y~., data = dat, kernel="linear", scale=FALSE)
+(coefs2 <- svmfit2$coefs) # Why 4 coefficients??
+```
+
+\newpage
+
+## Problem 2 - Chapter 9, Exercise 4
+
+The support vector machine with the radial kernel outperfoms the polynomial kernel and the support vector classifier on the training data, as we can see from the misclassification rates calculated below. The misclassification error for the radial kernel on the training data is 0.01111111, while the misclassification error for both the polynomial kernel and the support vector classifier is 0.2555556. The radial kernel also outperforms the other two models on the test data since the misclassification rate is 0.1, while the misclassification rate for the other two methods is 0.3. The first plot below shows the true simulated data. The results we obtained make sense when looking at the SVM classificaiton plots. The first SVM plot is for the support vector classifier, and we can see that it just classifies all the points as blue, so it misclassifies all of the red points. The second plot is for the radial kernel, and we can see here that the model is correctly classifying most of the red points, which the linear kernel missed. The last plot is for the polynomial kernel, which like the linear kernel, also misclassfies all of the red points.
+
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+# Creating dataset
+x1 <- seq(0, 5, length.out = 100)
+set.seed(123)
+x2 <- rnorm(100,3.3,8)
+df <- as.data.frame(cbind(x1,x2))
+g1 <- which(3 < df$x1 & 4.5 > df$x1 & 15 > df$x2 & -5 < df$x2)
+g2 <- c(1:100)[-g1]
+df$colors <- c(NA,100)
+for (i in g1){
+  df$colors[i] <- "red"
+}
+for (i in g2){
+  df$colors[i] <- "blue"
+}
+df$colors <- as.factor(df$colors)
+plot(df$x1, df$x2, col = as.character(df$colors), xlab="X1", ylab="X2", main = "Simulated Data", pch=19)
+
+# Create train and test set
+set.seed(123)
+test.indices <- sample(1:100, 10)
+train <- df[-test.indices,]
+test <- df[test.indices,]
+
+# Support Vector Classifier - determine best cost through cross-validation
+svc.tune <- tune(svm, colors ~ ., data = train, kernel = "linear", ranges = list(cost=c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
+svc.best.mod <- svc.tune$best.model
+plot(svc.best.mod, train)
+
+# Support Vector Classifier - Misclassification rates
+train$perf <- ifelse(train$colors != svc.best.mod$fitted, 1, 0)
+(svc.train.misclas <- sum(train$perf) / nrow(train)) # Misclassification in train set
+svc.test.preds <- predict(svc.best.mod, test)
+test$perf <- ifelse(test$colors != svc.test.preds, 1, 0)
+(svc.test.misclas <- sum(test$perf) / nrow(test)) # Misclassification in test set
+
+# Radial kernel
+train <- df[-test.indices,]
+test <- df[test.indices,]
+set.seed(123)
+svm.rad <- tune(svm, colors ~ ., data = train, kernel = "radial", ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100), gamma = c(0.5, 1, 2, 3 ,4)))
+svm.rad.best.mod <- svm.rad$best.model
+plot(svm.rad.best.mod, train)
+
+# Radial kernel - Misclassification rates
+train$perf <- ifelse(train$colors != svm.rad.best.mod$fitted, 1, 0)
+(svm.rad.train.misclas <- sum(train$perf) / nrow(train)) # Misclassification in train set
+svm.rad.test.preds <- predict(svm.rad.best.mod, test)
+test$perf <- ifelse(test$colors != svm.rad.test.preds, 1, 0)
+(svm.rad.test.misclas <- sum(test$perf) / nrow(test)) # Misclassification in test set
+
+# Polynomial kernel
+train <- df[-test.indices,]
+test <- df[test.indices,]
+set.seed(123)
+svm.poly <- tune(svm, colors ~ ., data = train, kernel = "polynomial", ranges = list(cost = c(0.01, 0.1, 1, 5), gamma = c(0.5, 1, 2, 3)))
+svm.poly.best.mod <- svm.poly$best.model
+plot(svm.poly.best.mod, train)
+
+# Polynomial kernel - Misclassification rates
+train$perf <- ifelse(train$colors != svm.poly.best.mod$fitted, 1, 0)
+(svm.poly.train.misclas <- sum(train$perf) / nrow(train)) # Misclassification in train set
+svm.poly.test.preds <- predict(svm.poly.best.mod, test)
+test$perf <- ifelse(test$colors != svm.poly.test.preds, 1, 0)
+(svm.poly.test.misclas <- sum(test$perf) / nrow(test)) # Misclassification in test set
+
+```
+
+\newpage
+
+## Problem 3 - Chapter 9, Exercise 5
+
+**Part(a)**  
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+set.seed(123)
+x1 <- runif(500) - 0.5
+x2 <- runif(500) - 0.5
+y <- 1*(x1^2 - x2^2 > 0)
+```
+
+\newprob
+
+**Part(b)**  
+
+```{r, warning=FALSE, message=FALSE}
+y <- as.factor(y)
+plot(x1, x2, col = y, main="Plotted Points", pch=19)
+```
+
+\newprob
+
+**Part(c)**  
+
+```{r, warning=FALSE, message=FALSE}
+dat <- as.data.frame(cbind(x1,x2,as.numeric(y)))
+names(dat)[3] <- "y"
+dat$y[which(dat$y==2)] <- 0
+log.mod <- glm(y ~ x1 + x2, data=dat, family=binomial)
+```
+
+\newprob
+
+**Part(d)**  
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(123)
+test.indices <- sample(1:500, 100)
+train <- dat[-test.indices,]
+test <- dat[test.indices,]
+log.mod.train <- glm(y ~ x1 + x2, data=train, family=binomial)
+preds <- ifelse(log.mod.train$fitted.values < .5, 0, 1)
+plot(x1, x2, col = as.factor(preds), main="Predicted Classes - Training Data", pch=19)
+```
+
+\newprob
+
+**Part(e)**  
+
+```{r, warning=FALSE, message=FALSE}
+nonlin.mod <- glm(y ~ I(x1^2) + I(x2^2), data=dat, family=binomial)
+```
+
+\newprob
+
+**Part(f)**  
+
+```{r, warning=FALSE, message=FALSE}
+nonlin.mod.train <- glm(y ~ I(x1^2) + I(x2^2), data=train, family=binomial)
+nonlin.preds <- ifelse(nonlin.mod.train$fitted.values < .5, 0, 1)
+plot(x1, x2, col = as.factor(nonlin.preds), main="Predicted Classes - Training Data", pch=19)
+```
+
+\newprob
+
+**Part(g)**  
+
+```{r, warning=FALSE, message=FALSE}
+train$y <- as.factor(train$y)
+svm.lin <- svm(y~., data = train, kernel="linear", scale=FALSE)
+plot(x1, x2, col = svm.lin$fitted, main="Predicted Classes - Training Data", pch=19)
+```
+
+\newprob
+
+**Part(h)**  
+
+```{r, warning=FALSE, message=FALSE}
+svm.nonlin <- tune(svm, y ~ ., data = train, kernel = "polynomial", degree = 2, ranges = list(cost = c(0.01, 0.1, 1, 5), gamma = c(0.5, 1, 2, 3)))
+svm.nonlin.bestmod <- svm.nonlin$best.model
+plot(x1, x2, col = svm.nonlin.bestmod$fitted, main="Predicted Classes - Training Data", pch=19)
+```
+
+\newprob
+
+**Part(h)**  
+
+None of the models seem to fit well. Logistic regression using $X1$ and $X2$ as predictors and SVM using a linear kernal both predict the same class for every observation, while logistic regression using a non-linear relationship with the predictors and SVM using a non-linear kernel predict both classes, but seem to miss the true relationship seen in the plot of the points. To find the true relationship, we should try other kernels or maybe seek other methods.
+
+
+\newpage
+
+## Problem 3 - Chapter 9, Exercise 8
+
+**Part(a)**  
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+library(ISLR)
+set.seed(123)
+train.indices <- sample(1:nrow(OJ), 800)
+train <- OJ[train.indices,]
+test <- OJ[-train.indices,]
+```
+
+\newprob
+
+**Part(b)**  
+
+We see in the table outputs below that the true data has 484 CH and 316 MM, while the model predicts 554 CH and only 246 MM. So, we can see that the proportion of MM is underestimated in the model.
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+set.seed(123)
+svmfit <- svm(Purchase~., data = train, kernel="linear", cost=.01, scale=FALSE)
+summary(svmfit)
+table(svmfit$fitted)
+table(train$Purchase)
+```
+
+\newprob
+
+**Part(c)**  
+
+The training error rate is 0.22 while the test error rate is 0.2148148.
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+perf_train <- ifelse(train$Purchase != svmfit$fitted, 1, 0)
+(misclass_train <- sum(perf_train) / nrow(train)) # Misclassification in train set
+preds_test <- predict(svmfit, test)
+perf_test <- ifelse(test$Purchase != preds_test, 1, 0)
+(misclass_test <- sum(perf_test) / nrow(test)) # Misclassification in test set
+```
+
+\newprob
+
+**Part(d)**  
+
+The optimal cost is 1.
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+set.seed(123)
+svm.tune <- tune(svm, Purchase ~ ., data = train, kernel = "linear", ranges = list(cost=c(0.01, 0.1, 1, 5, 10, 100)))
+(svm.best.mod <- svm.tune$best.model)
+```
+
+\newprob
+
+**Part(e)**  
+
+The new training error rate is 0.16375 while the new test error rate is 0.1666667.
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+svmfit <- svm(Purchase~., data = train, kernel="linear", cost=1, scale=FALSE)
+perf_train <- ifelse(train$Purchase != svmfit$fitted, 1, 0)
+(misclass_train <- sum(perf_train) / nrow(train)) # Misclassification in train set
+preds_test <- predict(svmfit, test)
+perf_test <- ifelse(test$Purchase != preds_test, 1, 0)
+(misclass_test <- sum(perf_test) / nrow(test)) # Misclassification in test set
+```
+
+\newprob
+
+**Part(f)**  
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+# Part b
+svmfit <- svm(Purchase~., data = train, kernel="radial", cost=.01, scale=FALSE)
+# Part c
+perf_train <- ifelse(train$Purchase != svmfit$fitted, 1, 0)
+(misclass_train <- sum(perf_train) / nrow(train)) # Misclassification in train set
+preds_test <- predict(svmfit, test)
+perf_test <- ifelse(test$Purchase != preds_test, 1, 0)
+(misclass_test <- sum(perf_test) / nrow(test)) # Misclassification in test set
+# Part d
+svm.tune <- tune(svm, Purchase ~ ., data = train, kernel = "radial", ranges = list(cost=c(0.01, 0.1, 1, 5, 10, 100)))
+(svm.best.mod <- svm.tune$best.model)
+# Part e
+svmfit <- svm(Purchase~., data = train, kernel="radial", cost=1, scale=FALSE)
+perf_train <- ifelse(train$Purchase != svmfit$fitted, 1, 0)
+(misclass_train <- sum(perf_train) / nrow(train)) # Misclassification in train set
+preds_test <- predict(svmfit, test)
+perf_test <- ifelse(test$Purchase != preds_test, 1, 0)
+(misclass_test <- sum(perf_test) / nrow(test)) # Misclassification in test set
+```
+
+\newprob
+
+**Part(g)**  
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+# Part b
+svmfit <- svm(Purchase~., data = train, kernel="polynomial", degree=2, cost=.01, scale=FALSE)
+# Part c
+perf_train <- ifelse(train$Purchase != svmfit$fitted, 1, 0)
+(misclass_train <- sum(perf_train) / nrow(train)) # Misclassification in train set
+preds_test <- predict(svmfit, test)
+perf_test <- ifelse(test$Purchase != preds_test, 1, 0)
+(misclass_test <- sum(perf_test) / nrow(test)) # Misclassification in test set
+# Part d
+svm.tune <- tune(svm, Purchase ~ ., data = train, kernel = "polynomial", degree=2, ranges = list(cost=c(0.01, 0.1, 1, 5, 10, 100)))
+(svm.best.mod <- svm.tune$best.model)
+# Part e
+svmfit <- svm(Purchase~., data = train, kernel="radial", cost=5, scale=FALSE)
+perf_train <- ifelse(train$Purchase != svmfit$fitted, 1, 0)
+(misclass_train <- sum(perf_train) / nrow(train)) # Misclassification in train set
+preds_test <- predict(svmfit, test)
+perf_test <- ifelse(test$Purchase != preds_test, 1, 0)
+(misclass_test <- sum(perf_test) / nrow(test)) # Misclassification in test set
+```
+
+\newprob
+
+**Part(h)**  
+
+Overall, is seems that the support vector machine with a polynomial kernel of degree 2 gives the best results on this data, since the test error is the smaller than the other test errors.
+
+
+
+
+
+

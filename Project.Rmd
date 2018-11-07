@@ -1,0 +1,344 @@
+---
+title: "House Prices"
+author: "Corey Kuhn"
+date: "4/24/2018"
+output: pdf_document
+linestretch: 2
+header-includes:
+  - \setlength{\parindent}{4em}
+  - \setlength{\parskip}{0em}
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, warning = FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Introduction
+
+There are many details about a home that can contribute to its value. More obvious attributes include number of bedrooms, number of bathrooms, and square footage, whereas less common attributes may include the shape of the lot, the house style, or the slope of the land. The Ames Housing data provides us with a train and a test set. The train set consists of information on 79 explanatory variables for 1,460 homes in Ames, Iowa, along with each home's final sale price. The test set consists of information on the same 79 explanatory variables for 1,459 home without the final sale price. The goal is to use advanced regression techniques to predict the sale price of homes in Ames, Iowa as accurately as possible. In this paper, we will use the train set to build our best model before applying the model to the test set. Ultimately, we will submit our predictions of sale price for the homes in the test dataset to Kaggle for scoring.
+
+## Methods
+
+We start by cleaning the training dataset before running any analyses. In the data description file, we see a number of categorical variables contain a level coded as "NA". When the data is loaded into R, however, this is taken to mean that the data is `NA`, or missing. Therefore, we go through the data and re-code the `NA`s for the appropriate variables to a level that will not be treated as missing data. After doing this, we still see some missing data that is actually missing (not missing just due to coding issues). To impute these missing values, we use the `mice()` function in R, which fills in plausible values for each missing value in the data. We then use the `model.matrix()` function to create dummy variables for each level of each categorical variable. Lastly, we standardize the numeric predictors to ensure they are all on the same scale in preparation for the regression methods we use. Once we perform all this data cleaning, we continue with our anlysis.
+
+The first method we consider is ridge regression, a method that seeks to find coefficient values that minimize the equation
+
+\begin{center}
+$\sum_{i=1}^n \bigg(y_i - \beta_0 - \sum_{j=1}^p \beta_j x_{ij} \bigg)^2 + \lambda \sum_{j=1}^p \beta_j^2$,
+\end{center}
+
+which can also be written by
+
+\begin{center}
+$RSS + \lambda \sum_{j=1}^p \beta_j^2$.
+\end{center}
+
+We can see in the equation above that ridge regression tries to minimize the RSS, just as least squares does, with an additional penalty term. This penalty terms contains $\lambda$, which is a tuning parameter that must be specified by the researcher. Depending on the value of this tuning parameter, the coefficient estimates will be shrunk towards 0 but none will ever shrink exactly to 0. For large values of $\lambda$, the coefficients will be shrunk more, whereas when $\lambda = 0$, we obtain the same coefficient estimates as in least squares. We use cross-validation to choose the best value of $\lambda$. 
+
+The next method we consider is LASSO, which is similar to ridge in that it finds the coefficients that minimize the RSS plus a penalty term, as shown in the expression
+
+\begin{center}
+$RSS + \lambda \sum_{j=1}^p |\beta_j|$.
+\end{center}
+
+We can see in the equation that the penalty term is slightly different that the one used in ridge regression. One advantage of using LASSO instead of ridge is that if the value of $\lambda$ is high enough, LASSO will shrink some coefficient estimates to 0. In other words, LASSO can perform variable selection, whereas ridge regression cannot. For this method, we also use cross-validation to choose the value of $\lambda$.
+
+The last method we consider is partial least squares, a dimension reduction method. This method creates linear combinations of the original features to create a new set of features $Z_1,...Z_M$, or directions, and then uses least squares to fit a linear model with the new features. The first direction is found by the equation $Z_1 = \sum_{j=1}^p \phi_{j1} X_j$, where $\phi_{j1}$ is the coefficient found by the simple linear regression of $Y$ onto $X_j$. In other words, when finding $Z_1$, the variables most related to the response variable have the highest weight. The subsequent directions are found to explain information in the data not already explained in the previous directions, making all directions orthogonal. In our analysis, we perform PLS, selecting 10, 15, and 20 directions.
+
+We use k-fold cross-validation with $k=10$ to evaluate the perfomance of these 3 different methods in predicting sale price of homes. $K$-fold cross-validation is a method that helps us predict how well a model will perform on new data. This process involves selecting a value for the number of folds, $k$, and randomly dividing the dataset into $k$ folds, or groups. Each of the folds will act as a validation set while a particular method is performed on the rest of the $k-1$ folds. The MSE is caluculated on each of the validation folds, resulting in $k$ different MSE calculations. The MSE values are then averaged to get the $k$-fold cross-validation estimate, defined as 
+  
+\begin{center}
+$CV_{(k)} = \frac{1}{k} \sum_{i=1}^k MSE_i$.
+\end{center} 
+
+We calculate the 10-fold cross-validation error for each of the three regression methods we are considering, and the method that produces the lowest cross-validation RMSE will ultimately be the method we use to predict the housing prices in the test dataset.
+
+## Results
+
+Our results of performing 10-fold cross validation using each of the methods can be summarized in the table in the Appendix. This table shows the cross-validated RMSE values for ridge, LASSO, and PLS using 10, 15, and 20 directions. We can see in this table that LASSO performs best, since it results in the lowest RMSE value. Thus, we use LASSO to fit a model on the whole training dataset, and then we use this model to predict the sale prices for the homes in the test dataset.
+
+In fitting the LASSO to the whole training dataset, we find the best value for $\lambda$ using cross validation. We plot the MSE against different values of $log(\lambda)$ in Figure 1 in the Appendix, and see that the lowest MSE is found when $log(\lambda) = 5.372565$, or when $\lambda = 215.4147$. Thus, we use this value of $\lambda$ for our LASSO model.
+
+We then examine the estimated coefficients of the model by looking at Figure 2 in the Appendix. We can see in this plot that most of the coefficients are shrunk to 0, but there are a few very large coefficients. Looking at the coefficients to see the largest effects on sale price, we see that the 5 variables with the largest coefficients include Neighborhood14 (Northridge), Neighborhood22 (Stone Brook), Neighborhood16 (Northridge Heights), RoofMatl8 (Wood Shingles), and GrLivArea. In other words, when a home is located in Northridge, Stone Brook, or Northridge Heights, the sale price of a home is significantly affected. Similarly, when the roof material is wood shingles and when the above ground living area square footage is large, this will have a great impact on sale price for homes in Ames, Iowa.
+
+## Conclusion
+
+In conclusion, there are many variables that come into play when considering the sale price of a home. Though we may have guessed that the neighborhood in which a home is located or the square footage impacts the sale price greatly, having a wood shingle roof is a much less obvious attribute that our study shows impacts the sale price significantly. Considering ridge regression, LASSO, and partial least squares, our study shows that LASSO predicts the sale price of a home best.
+
+Though the LASSO method has the best predictive ability compared to ridge and partial least squares, it still is off in prediction by an average of about $31,500. This is a significant amount of money, so further research could be exploring other methods that may have higher predictive ability, such as splines and/or additive models. Perhaps these methods could better capture patterns in the data that are missing from the methods used in this study. Also, this study does not extensively study the best way to impute missing data. This study could be improved by trying variations of the data imputation method we use or by trying other data imputation methods to get more appropriate predictions for the missing data.
+
+
+
+\newpage
+
+## Appendix
+
+##Tables/Figures:
+\newln
+
+\begin{center}
+ \begin{tabular}{||c | c | c | c | c||} 
+ \hline
+ Ridge & LASSO & PLS, M=10 & PLS, M=15 & PLS, M=20 \\
+ \hline\hline
+ 32051.91 & 31426.68 & 32252.34 & 32293.54 & 32686.2 \\ [1ex] 
+ \hline
+\end{tabular}
+\end{center}
+
+\clearpage
+
+![MSE vs. log(Lambda).](Rplot.png)
+
+\clearpage
+
+![Coefficients vs. L1 Norm.](Rplot2.png)
+
+
+\clearpage
+
+##R Code: 
+
+```{r, eval = FALSE}
+library(glmnet) # glmnet() function - Ridge and LASSO
+library(pls) # plsr() function - PLS
+library(mice) # mice() function - impute missing data
+
+# DATA CLEANING
+
+dat <- read.csv("~/Desktop/Desktop/Loyola Grad/Semester2/STAT488 - Predictive Analytics/Project/train.csv")
+
+# Get rid of ID variable and GarageYrBlt
+dat <- dat[,-1]
+dat <- subset(dat, select = -c(GarageYrBlt))
+
+# Find columns/variables which have missing values
+missing <- which(is.na(dat), arr.ind=TRUE)
+missing_cols <- unique(missing[,2])
+missing_vars <- names(dat)[missing_cols]
+miss_df <- as.data.frame(cbind(missing_cols, missing_vars))
+
+# Change NAs to No Alley Access
+levels(dat$Alley)[length(levels(dat$Alley))+1] <- "No Alley Access"
+dat$Alley[which(is.na(dat$Alley))] <- "No Alley Access"
+
+# Change NAs to No Basement
+for(i in c(30:33, 35)){
+  levels(dat[,i])[length(levels(dat[,i]))+1] <- "No Basement"
+  dat[,i][which(is.na(dat[,i]))] <- "No Basement"
+}
+
+# Change NAs to No Fireplace
+levels(dat$FireplaceQu)[length(levels(dat$FireplaceQu))+1] <- "No Fireplace"
+dat$FireplaceQu[which(is.na(dat$FireplaceQu))] <- "No Fireplace"
+
+# Change NAs to No Garage
+for(i in c(58:59, 62, 63)){
+  levels(dat[,i])[length(levels(dat[,i]))+1] <- "No Garage"
+  dat[,i][which(is.na(dat[,i]))] <- "No Garage"
+}
+
+# Change NAs to No Pool
+levels(dat$PoolQC)[length(levels(dat$PoolQC))+1] <- "No Pool"
+dat$PoolQC[which(is.na(dat$PoolQC))] <- "No Pool"
+
+# Change NAs to No Fence
+levels(dat$Fence)[length(levels(dat$Fence))+1] <- "No Fence"
+dat$Fence[which(is.na(dat$Fence))] <- "No Fence"
+
+# Change NAs to None
+levels(dat$MiscFeature)[length(levels(dat$MiscFeature))+1] <- "None"
+dat$MiscFeature[which(is.na(dat$MiscFeature))] <- "None"
+
+# Impute missing data
+tempData <- mice(dat, m=1, maxit=10, meth='cart', seed=500) # Method = "pmm" returns an error
+completedData <- complete(tempData, 1)
+dat <- completedData
+which(!complete.cases(dat))
+
+# Scale the numeric variables only, not the categorical ones (DO NOT SCALE SalePrice)
+SalePrice <- dat$SalePrice
+ind <- sapply(dat, is.numeric)
+dat[,ind] <- lapply(dat[,ind], scale)
+dat$SalePrice <- SalePrice
+
+# Create create dummy variables for categorical vars
+x <- as.data.frame(model.matrix(SalePrice ~ ., data = dat)[, -1])
+SalePrice <- dat$SalePrice
+dat1 <- cbind(SalePrice, x)
+
+# Cross-Validation
+
+set.seed(1234)
+indices <- sample(1:nrow(dat1))
+# head(indices)
+dat1 <- dat1[indices,]
+nfolds <- 10
+fold <- rep(1:nfolds, length.out = nrow(dat1))
+
+ridge.rmse <- rep(NA, nfolds)
+lasso.rmse <- rep(NA, nfolds)
+pls10.rmse <- rep(NA, nfolds)
+pls15.rmse <- rep(NA, nfolds)
+pls20.rmse <- rep(NA, nfolds)
+for(i in 1:nfolds){
+  # Create train and test set for each k folds
+  train <- dat1[which(fold!=i),]
+  test <- dat1[which(fold==i),]
+  x.train <- subset(train, select = -c(SalePrice))
+  y.train <- subset(train, select = c(SalePrice))
+  x.test <- subset(test, select = -c(SalePrice))
+  y.test <- subset(test, select = c(SalePrice))
+  train.df <- as.data.frame(cbind(y.train, x.train)) # For PLS
+  test.df <- as.data.frame(cbind(y.test, x.test)) # For PLS
+  
+  # Ridge regression
+  grid <- 10^seq(10,-2,length=100)
+  model.ridge <- glmnet(as.matrix(x.train), as.matrix(y.train), alpha = 0, lambda = grid, standardize = FALSE)
+  set.seed(1234)
+  cv.out <- cv.glmnet(as.matrix(x.train), as.matrix(y.train), alpha = 0, standardize = FALSE)
+  bestlam <- cv.out$lambda.min
+  pred.ridge <- predict(model.ridge, s = bestlam, newx = as.matrix(x.test))
+  ridge.rmse[i] <- sqrt(mean((pred.ridge - y.test)^2)) # RMSE
+
+  # LASSO 
+  grid <- 10^seq(10,-2,length=100)
+  model.lasso <- glmnet(as.matrix(x.train), as.matrix(y.train), alpha = 1, lambda = grid, standardize = FALSE)
+  set.seed(1234)
+  cv.out <- cv.glmnet(as.matrix(x.train), as.matrix(y.train), alpha = 1, standardize = FALSE)
+  bestlam <- cv.out$lambda.min
+  pred.lasso <- predict(model.lasso, s = bestlam, newx = as.matrix(x.test))
+  lasso.rmse[i] <- sqrt(mean((pred.lasso - y.test)^2)) # RMSE
+  
+  # PLS ncomp = 10, ncomp = 15, ncomp = 20
+  set.seed(1234)
+  pls.fit <- plsr(SalePrice ~ ., data = train.df, scale = FALSE, validation="CV")
+  pls10.pred <- predict(pls.fit, x.test, ncomp = 10)
+  pls15.pred <- predict(pls.fit, x.test, ncomp = 15)
+  pls20.pred <- predict(pls.fit, x.test, ncomp = 20)
+  pls10.rmse[i] <- sqrt(mean((pls10.pred - y.test)^2)) # RMSE
+  pls15.rmse[i] <- sqrt(mean((pls15.pred - y.test)^2)) # RMSE
+  pls20.rmse[i] <- sqrt(mean((pls20.pred - y.test)^2)) # RMSE
+}
+
+(ridge.rmse.cv <- mean(ridge.rmse))
+(lasso.rmse.cv <- mean(lasso.rmse))
+(pls10.rmse.cv <- mean(pls10.rmse))
+(pls15.rmse.cv <- mean(pls15.rmse))
+(pls20.rmse.cv <- mean(pls20.rmse))
+
+
+##########   TEST SET    ############
+
+test <- read.csv("~/Desktop/Desktop/Loyola Grad/Semester2/STAT488 - Predictive Analytics/Project/test.csv")
+Id <- test$Id
+
+# Get rid of ID variable and GarageYrBlt
+test <- test[,-1]
+test <- subset(test, select = -c(GarageYrBlt))
+
+# Make levels the same as in train dataset
+indices <- c(14,16,22,23,24,39,42,62,71,73)
+for(i in 1:length(indices)){
+  levels(test[,indices[i]]) <- levels(dat[,indices[i]])
+}
+
+# Find columns/variables which have missing values
+missing <- which(is.na(test), arr.ind=TRUE)
+missing_cols <- unique(missing[,2])
+missing_vars <- names(test)[missing_cols]
+miss_df <- as.data.frame(cbind(missing_cols, missing_vars))
+
+# Change NAs to No Alley Access
+levels(test$Alley)[length(levels(test$Alley))+1] <- "No Alley Access"
+test$Alley[which(is.na(test$Alley))] <- "No Alley Access"
+
+# Change NAs to No Basement
+for(i in c(30:33, 35)){
+  levels(test[,i])[length(levels(test[,i]))+1] <- "No Basement"
+  test[,i][which(is.na(test[,i]))] <- "No Basement"
+}
+
+# Change NAs to No Fireplace
+levels(test$FireplaceQu)[length(levels(test$FireplaceQu))+1] <- "No Fireplace"
+test$FireplaceQu[which(is.na(test$FireplaceQu))] <- "No Fireplace"
+
+# Change NAs to No Garage
+for(i in c(58:59, 62, 63)){
+  levels(test[,i])[length(levels(test[,i]))+1] <- "No Garage"
+  test[,i][which(is.na(test[,i]))] <- "No Garage"
+}
+
+# Change NAs to No Pool
+levels(test$PoolQC)[length(levels(test$PoolQC))+1] <- "No Pool"
+test$PoolQC[which(is.na(test$PoolQC))] <- "No Pool"
+
+# Change NAs to No Fence
+levels(test$Fence)[length(levels(test$Fence))+1] <- "No Fence"
+test$Fence[which(is.na(test$Fence))] <- "No Fence"
+
+# Change NAs to None
+levels(test$MiscFeature)[length(levels(test$MiscFeature))+1] <- "None"
+test$MiscFeature[which(is.na(test$MiscFeature))] <- "None"
+
+# Impute missing values
+tempData <- mice(test, m=1, maxit=10, method='pmm', seed=500) # method = "cart" returns an error
+completedData <- complete(tempData, 1)
+test <- completedData
+which(!complete.cases(test)) # Observations 456 and 486 still have missing values
+
+# Scale the numeric variables only, not the categorical ones
+ind <- sapply(test, is.numeric)
+test[,ind] <- lapply(test[,ind], scale)
+
+# Create create dummy variables for categorical vars
+test$tempY <- median(dat$SalePrice) # need a Y variable in order to create model matrix
+levels(test$Utilities)[length(levels(test$Utilities)) + 1] <- "NoSeWa"
+x.test <- as.data.frame(model.matrix(tempY ~ ., data = test)[, -1]) # Automatically gets rid of observations with missing data!!
+
+
+###### LASSO model is best, so fit on whole train dataset and then apply to test dataset
+
+# Fit on train set - create x matrix and y matrix
+x <- as.matrix(subset(dat1, select = -c(SalePrice)))
+y <- as.matrix(subset(dat1, select = c(SalePrice)))
+# Ridge regression on whole train data
+grid <- 10^seq(10,-2,length=100)
+model.lasso <- glmnet(x, y, alpha = 1, lambda = grid, standardize = FALSE)
+plot(model.lasso)
+set.seed(1234)
+cv.out <- cv.glmnet(x, y, alpha = 1, standardize = FALSE)
+plot(cv.out)
+bestlam <- cv.out$lambda.min
+(lasso.coef <- predict(model.lasso, type="coefficients", s = bestlam))
+sort(abs(lasso.coef), decreasing = TRUE)[-1] # Don't want to see intercept; Neighborhood14, Neighborhood22, Neighborhood16, RoofMatl8, GrLivArea have largest coefficients (abs. value)
+# Below creates the predictions for test dataset - must data clean the test data first
+pred.lasso <- predict(model.lasso, s = bestlam, newx = as.matrix(x.test))
+
+# Insert median SalePrice from train dataset for Observations 456 and 486, since mice did not work for these
+preds <- c(pred.lasso[1:455], median(dat1$SalePrice), pred.lasso[456:485], median(dat1$SalePrice), pred.lasso[486:length(pred.lasso)])
+out <- cbind(Id, preds)
+colnames(out)[2] <- c("SalePrice")
+
+# Write csv file with preds
+write.csv(out, file = "Preds.csv", row.names = FALSE)
+```
+
+
+
+
+

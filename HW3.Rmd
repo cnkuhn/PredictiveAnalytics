@@ -1,0 +1,397 @@
+---
+title: "HW3"
+author: "Corey Kuhn"
+date: "2/20/2018"
+output: pdf_document
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Problem 1 - Chapter 6, Question 8
+
+**Part (a)-(b)**  
+
+See code below.  
+
+**Part (c)**  
+
+According to $C_p$, the model containing 4 predictors, including $X$, $X^2$, $X^3$, and $X^8$, is the best model, since this gives the lowest $C_p$ value of 1.831973. According to BIC, the model including 3 predictors, including $X$, $X^2$, and $X^3$, is the best model, since this gives the lowest BIC value of -556.0252. According to adjusted $R^2$, the model containing 5 predictors, including $X$, $X^2$, $X^3$, $X^4$, and $X^8$, is the best model, since this gives the highest adjusted $R^2$ value of 0.9967539. We can also plot these 3 measurements against the number of predictors to choose the best model. Looking at the plots below, we see that the minimum $C_p$ value occurs when there are 4 predictors in the model, the minimum BIC value occurs when there are 3 predictors in the model, and the maximum adjusted $R^2$ occurs when there are 5 predictors in the model, which is consistent with what we found by just looking at the values of each measurement for each model.
+\newln
+```{r, fig.height=6}
+# Part (a)
+set.seed(123)
+X <- rnorm(100)
+epsilon <- rnorm(100)
+
+# Part (b)
+Y <- 2 + 3*X + 4*X^2 + 5*X^3 + epsilon
+
+# Part (c)
+df <- data.frame(cbind(X,Y))
+library(leaps) # for regsubsets() function
+regfit.full <- regsubsets(Y~poly(X, 10),df,nvmax=10)
+summary(regfit.full)
+reg.summary <- summary(regfit.full)
+reg.summary$cp
+reg.summary$bic
+reg.summary$adjr2
+# plot the measurements
+par(mfrow=c(2,2))
+plot(reg.summary$cp, xlab="Number of Predictors", ylab="Cp", type="l", ylim=c(0,50), main= "Cp vs. Number of Predictors")
+plot(reg.summary$bic, xlab="Number of Predictors", ylab="BIC", type="l", main= "BIC vs. Number of Predictors")
+plot(reg.summary$adjr2, xlab="Number of Predictors", ylab="Adjusted R^2", type="l", main= "Adjusted R^2 vs. Number of Predictors")
+```
+
+\newprob
+
+**Part (d)**  
+
+Forward/Backward Selecion: The results we obtain for forward and backward selection are the exact same. According to $C_p$, the model containing 4 predictors, including $X$, $X^2$, $X^3$, and $X^8$, is the best model, since this gives the lowest $C_p$ value of 1.831973. According to BIC, the model including 3 predictors, including $X$, $X^2$, and $X^3$, is the best model, since this gives the lowest BIC value of -556.0252. According to adjusted $R^2$, the model containing 5 predictors, including $X$, $X^2$, $X^3$, $X^4$, and $X^8$, is the best model, since this gives the highest adjusted $R^2$ value of 0.9967539. These results are consistent with what we see with best subset selection in Part(a).  
+\newln
+```{r}
+# Forward selection
+regfit.fwd <- regsubsets(Y ~ poly(X, 10), df, nvmax=10, method="forward")
+summary(regfit.fwd)
+regfwd.summary <- summary(regfit.fwd)
+regfwd.summary$cp
+regfwd.summary$bic
+regfwd.summary$adjr2
+
+# Backward selection
+regfit.bwd <- regsubsets(Y ~ poly(X, 10), df, nvmax=10, method="backward")
+summary(regfit.bwd)
+regbwd.summary <- summary(regfit.bwd)
+regbwd.summary$cp
+regbwd.summary$bic
+regbwd.summary$adjr2
+```
+
+\newprob
+
+**Part (e)**  
+
+By performing cross-validation to select the optimal value of $\lambda$, we obtain a value of $\lambda = 0.1091665$, with an associated test error of 0.9415195. See below for a plot of the MSE vs. $log(\lambda)$. After refitting the lasso model to all of the data using the best $\lambda$ found by cross-validation, we see that 5 coefficient estimates have been shrunk to 0, so there are 5 predictors included in the final model, including $X$, $X^2$, $X^3$, $X^4$, and $X^8$. See output below for the coefficient estimates for each term.
+\newln
+```{r, warning=FALSE, message=FALSE}
+# Create X matrix and Y vector and lambda grid
+x <- model.matrix(Y ~ poly(X, 10), df)[,-1]
+y <- Y
+grid <- 10^seq(10,-2,length=100)
+# Create train and test indices
+set.seed(123)
+train <- sample(c(TRUE,FALSE), nrow(df), rep=TRUE)
+test <- (!train)
+# Lasso train
+library(glmnet) # for ridge and lasso regression
+lasso.mod <- glmnet(x[train,],y[train],alpha=1,lambda=grid)
+set.seed(123)
+cv.out <- cv.glmnet(x[train,],y[train],alpha=1)
+plot(cv.out)
+bestlam <- cv.out$lambda.min
+bestlam
+# Lasso predict test
+lasso.pred <- predict(lasso.mod,s=bestlam,newx=x[test,])
+mean((lasso.pred-y[test])^2)
+# Now, refit lasso regression model on full dataset using bestlam
+out <- glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef <- predict(out,type="coefficients",s=bestlam)
+lasso.coef
+```
+
+\newprob
+
+**Part (f)**  
+
+The model selected by best subset selection according to $C_p$ is the model containing 8 predictors, all except for $X^9$ and $X^10$. According to BIC, the best model is the one containing 7 predictors, all except for $X^8$, $X^9$ and $X^10$. Lastly, according to the adjusted $R^2$, the best model selected by best subset selection is the one containing 8 predictors, all but $X^9$ and $X^{10}$.  
+
+Using the Lasso method, a $\lambda$ value of 0.6295189 was selected by cross-validation. Using this $\lambda$ to fit the Lasso model on all the data, 4 coefficient estimates are shrunk to 0, so the final model includes all predictors with the exception of $X^2$, $X^8$, $X^9$ and $X^{10}$.
+\newln
+```{r}
+Y2 <- 2 + 1.5*X^7 + epsilon
+# Best subset
+df2 <- data.frame(cbind(X,Y2))
+regfit.full2 <- regsubsets(Y2~poly(X, 10),df2,nvmax=10)
+summary(regfit.full2)
+reg.summary2 <- summary(regfit.full2)
+reg.summary2$cp
+reg.summary2$bic
+reg.summary2$adjr2
+# Lasso
+# Create X matrix and Y vector and lambda grid
+x2 <- model.matrix(Y2 ~ poly(X, 10), df2)[,-1]
+y2 <- Y2
+grid <- 10^seq(10,-2,length=100)
+# Create train and test indices
+set.seed(123)
+train2 <- sample(c(TRUE,FALSE), nrow(df2), rep=TRUE)
+test2 <- (!train2)
+# Lasso train
+lasso.mod2 <- glmnet(x2[train2,],y2[train2],alpha=1,lambda=grid)
+set.seed(123)
+cv.out2 <- cv.glmnet(x2[train2,],y2[train2],alpha=1)
+plot(cv.out2)
+bestlam2 <- cv.out2$lambda.min
+bestlam2
+# Lasso predict test
+lasso.pred2 <- predict(lasso.mod2,s=bestlam2,newx=x2[test2,])
+mean((lasso.pred2-y2[test2])^2)
+# Now, refit lasso regression model on full dataset using bestlam
+out2 <- glmnet(x2,y2,alpha=1,lambda=grid)
+lasso.coef2 <- predict(out2,type="coefficients",s=bestlam2)
+lasso.coef2
+```
+
+\newpage
+
+## Problem 2 - Chapter 6, Question 11
+
+**Part (a)**  
+
+We consider 4 methods, including best subset regression, the lasso, ridge regression, and PCR. In best subset regression, we choose the model with the lowest BIC value, which turns out to be the model containing 3 predictors - rad, black, and lstat. Using this model, we predict the values for crim in the test set, and we get an MSE value of 23486.77.  
+
+Using the lasso method, we obtain $\lambda = 0.03213343$ using cross validation. Looking at the coefficient estimates, we see that only 1 has been shrunk to 0. Using this model to predict values for crim in the test set, we obtain an MSE value of 40.03581.  
+
+Using the ridge method, we obtain $\lambda = 0.6456355$ using cross validation. Looking at the coefficient estimates, we see that none have been shrunk to 0, which we expect in ridge regression. Using this model to predict values for crim in the test set, we obtain an MSE value of 39.81263.  
+
+Finally, using the PCA method, we see that $M = 13$ gives us the smallest RMSE value from cross-validation on the train set. Using 13 principal components, we predict the values of crim in the test set and obtain an MSE value of 33.945.  
+\newln
+```{r}
+library(MASS) # for Boston dataset
+# Create train and test indices
+set.seed(123)
+train <- sample(c(TRUE,FALSE), nrow(Boston), rep=TRUE)
+test <- (!train)
+
+# Best Subset
+regfit.full <- regsubsets(crim~., Boston[train,], nvmax=13)
+summary(regfit.full)
+reg.summary <- summary(regfit.full)
+reg.summary$bic # choose model with 3 predictors - rad, black, lstat
+coef(regfit.full, 3)
+bs.pred <- 4.8628149 + 0.4684487*Boston$rad[test] - 0.0232112*Boston$black[test] + 0.2282953*Boston$lstat[test]
+mean((bs.pred-Boston[test,])^2) # Mean squared prediction error
+
+# Lasso
+grid <- 10^seq(10,-2,length=100)
+model.lasso <- glmnet(as.matrix(Boston[train,-1]),Boston[train,1],alpha=1,lambda=grid)
+set.seed(123)
+cv.out <- cv.glmnet(as.matrix(Boston[train,-1]),Boston[train,1],alpha=1)
+bestlam <- cv.out$lambda.min
+bestlam
+pred.lasso <- predict(model.lasso,s=bestlam,newx=as.matrix(Boston[test,-1]))
+mean((pred.lasso-Boston[test,1])^2)
+lasso.coef <- predict(model.lasso,type="coefficients",s=bestlam)
+lasso.coef
+
+# Ridge
+grid <- 10^seq(10,-2,length=100)
+model.ridge <- glmnet(as.matrix(Boston[train,-1]),Boston[train,1],alpha=0,lambda=grid) # X must be a matrix
+set.seed(123)
+cv.out <- cv.glmnet(as.matrix(Boston[train,-1]),Boston[train,1],alpha=0)
+bestlam <- cv.out$lambda.min
+bestlam
+pred.ridge <- predict(model.ridge,s=bestlam,newx=as.matrix(Boston[test,-1]))
+mean((pred.ridge-Boston[test,1])^2)
+ridge.coef <- predict(model.ridge,type="coefficients",s=bestlam)
+ridge.coef
+
+# PCR
+set.seed(1)
+library(pls) # for pcr() function
+pcr.fit=pcr(crim~., data=Boston, scale=TRUE, validation="CV")
+summary(pcr.fit)
+pred.pcr=predict(pcr.fit,as.matrix(Boston[test,-1]),ncomp=13)
+mean((pred.pcr-Boston[test,1])^2)
+
+```
+
+\newprob
+
+**Part (b)**  
+
+The PCA model seems to perform the best when predicting future values of crim, since this method gives us the smallest MSE on our test set. The model obtained through best subset regression performs very poorly, since it has a very large MSE value.
+
+\newprob
+
+**Part (c)**  
+
+The PCA model involves all of the principal components. So if our goal is dimension reduction, this method will not help since we use the same number of principal components as there are predictor variables. However, if our goal is prediction, this model is the best since it gives the smallest test MSE value. In general, this method does involve all of the predictors since the principal components are combinations of the predictors. This method does not perform variable selection.
+
+\newpage
+
+## Problem 3 - Chapter 6, Question 4
+
+**Part(a)**  
+
+As we increase $\lambda$ from 0, the \textbf{training RSS} will \textbf{(v) remain constant}.  
+
+**Part(b)**  
+
+As we increase $\lambda$ from 0, the \textbf{test RSS} will \textbf{(ii) steadily increase}.  
+
+**Part(c)**  
+
+As we increase $\lambda$ from 0, the \textbf{variance} will \textbf{(iv) steadily decrease}.  
+
+**Part(d)**  
+
+As we increase $\lambda$ from 0, the \textbf{squared bias} will \textbf{(iii) steadily increase}.  
+
+**Part(e)**  
+
+As we increase $\lambda$ from 0, the \textbf{irreducible error} will \textbf{(v) remain constant}.  
+
+\newpage
+
+## Problem 4 - Chapter 6, Question 9
+
+**Part (a)**  
+
+See code below for creating a train set and test set.
+\newln
+```{r, warning=FALSE}
+library(ISLR) # College dataset in ISLR package
+College$Private <- as.numeric(College$Private)
+set.seed(987)
+train <- sample(c(TRUE,FALSE), nrow(College), rep=TRUE)
+test <- (!train)
+x.train <- College[train,-2]
+y.train <- College$Apps[train]
+x.test <- College[test,-2]
+y.test <- College$Apps[test]
+train.df <- as.data.frame(cbind(x.train,y.train))
+test.df <- as.data.frame(cbind(x.test,y.test))
+```
+
+\newprob
+
+**Part (b)**  
+
+The mean squared prediction error using a linear model is 1282238.
+\newln
+```{r}
+model.linear <- lm(y.train~.,data=train.df)
+pred.linear <- predict(model.linear, newdata=test.df)
+mean((pred.linear-test.df[,"y.test"])^2) # Mean squared prediction error
+```
+
+\newprob
+
+**Part (c)**  
+
+The mean squared prediction error using a ridge regression model is 2138205.
+\newln
+```{r}
+grid <- 10^seq(10,-2,length=100)
+model.ridge <- glmnet(as.matrix(x.train),y.train,alpha=0,lambda=grid) # X must be a matrix
+set.seed(123)
+cv.out <- cv.glmnet(as.matrix(x.train),y.train,alpha=0)
+bestlam <- cv.out$lambda.min
+# Ridge predict test
+pred.ridge <- predict(model.ridge,s=bestlam,newx=as.matrix(x.test))
+mean((pred.ridge-y.test)^2)
+# Coefficient estimates
+ridge.coef <- predict(model.ridge,type="coefficients",s=bestlam)
+ridge.coef
+```
+
+\newprob
+
+**Part (d)**  
+
+The mean squared prediction error using a lasso model is 1331965. Only 3 of the coefficient estimates are shrunk to 0, so there are 14 non-zero coefficient estimates.
+\newln
+```{r}
+grid <- 10^seq(10,-2,length=100)
+model.lasso <- glmnet(as.matrix(x.train),y.train,alpha=1,lambda=grid)
+set.seed(123)
+cv.out <- cv.glmnet(as.matrix(x.train),y.train,alpha=1)
+bestlam <- cv.out$lambda.min
+# Lasso predict test
+pred.lasso <- predict(model.lasso,s=bestlam,newx=as.matrix(x.test))
+mean((pred.lasso-y.test)^2)
+# Coefficient estimates
+lasso.coef <- predict(model.lasso,type="coefficients",s=bestlam)
+lasso.coef
+```
+
+\newprob
+
+**Part (e)**  
+
+The mean squared prediction error using a PCR model is 1282238. $M = 17$, chosen by cross-validation, which yields the smallest RMSE value of 1062 using the train set.
+\newln
+```{r}
+set.seed(1)
+library(pls) # for pcr() function
+pcr.fit=pcr(y.train~., data=train.df, scale=TRUE, validation="CV")
+summary(pcr.fit)
+pred.pcr=predict(pcr.fit,x.test,ncomp=17)
+mean((pred.pcr-y.test)^2)
+```
+
+\newprob
+
+**Part (f)**  
+
+The mean squared prediction error using a PLS model is 1305656. $M = 11$, chosen by cross-validation, which yields the smallest RMSE value of 1059 using the train set.
+\newln
+```{r}
+set.seed(1)
+pls.fit=plsr(y.train~., data=train.df, scale=TRUE, validation="CV")
+summary(pls.fit)
+pls.pred=predict(pls.fit,x.test,ncomp=11)
+mean((pls.pred-y.test)^2)
+```
+
+\newprob
+
+**Part (g)**  
+
+There does not seem to be much difference among the test errors resulting from these 5 approaches, since all of the MSEs are close to 1.3 million. The MSE for the ridge regression model is a bit higher, with a value closer to 2.1 million. However if we take the square root of these values, the RMSEs come within a few hundred applications of each other, which is not that great of a difference. Thus, any of the 5 methods are comparable to this problem. Using any of the models, we can predict the number of college applications received with an error of 1500 applications or less.
+
+```{r}
+sqrt(1300000)
+sqrt(2100000)
+```
+
+
+\newpage
+
+## Problem 5 - Chapter 6, Question 9 (Elastic Net Model)
+
+The mean squared prediction error using an elastic net model with $\alpha = 0.5$ is 1352460, where 3 coefficient estimates are shrunk to 0.
+\newln
+```{r}
+grid <- 10^seq(10,-2,length=100)
+model.en <- glmnet(as.matrix(x.train),y.train,alpha=0.5,lambda=grid)
+set.seed(123)
+cv.out <- cv.glmnet(as.matrix(x.train),y.train,alpha=0.5)
+bestlam <- cv.out$lambda.min
+# Elastic Net predict test
+pred.en <- predict(model.en,s=bestlam,newx=as.matrix(x.test))
+mean((pred.en-y.test)^2)
+# Coefficient estimates
+en.coef <- predict(model.en,type="coefficients",s=bestlam)
+en.coef
+```
+
+
+

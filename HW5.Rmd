@@ -1,0 +1,94 @@
+---
+title: "HW5"
+author: "Corey Kuhn"
+date: "4/3/2018"
+output: pdf_document
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Problem 1
+
+See below for the code to fit the regression tree to predict `mpg` from the other variables in the `mtcars` dataset. We first fit the regression tree on the training set, shown in the first tree below, where we see that only `disp` and `hp` are included in the model. We then use `cv.tree()` function to determine if pruning the tree will improve performance. Looking at the Error vs. Tree Size plot, we see that the most complex model has the lowest error, so there is no need to prune the tree. We then continue to make predictions for the observations in the test set using the most complex model. We see that the test MSE associated with the regression tree is 14.77567. The sqaure root of that is about 3.843913, meaning the model leads to test predictions that are within around 3.8 of the true miles per gallon.
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+library(tree)
+attach(mtcars)
+
+# Fitting and plotting tree
+set.seed(1)
+train = sample(1:nrow(mtcars), ceiling(0.75*nrow(mtcars)))
+tree.mtcars = tree(mpg ~ ., mtcars, subset=train)
+summary(tree.mtcars)
+plot(tree.mtcars)
+text(tree.mtcars,pretty=0)
+
+# Plot cross validation error for different tree sizes
+cv.mtcars = cv.tree(tree.mtcars)
+plot(cv.mtcars$size, cv.mtcars$dev, type='b', xlab="Tree Size", ylab="Error", main="Error vs. Tree Size")
+
+# Predictions on test set
+yhat = predict(tree.mtcars, newdata = mtcars[-train,])
+mtcars.test = mtcars[-train, "mpg"]
+mean((yhat-mtcars.test)^2)
+sqrt(mean((yhat-mtcars.test)^2))
+```
+
+\newpage
+
+## Problem 2
+
+See below for the code to fit a random forest model to the `mtcars` dataset in predicting `mpg`. The test MSE is 2.494195, and therefore the test RMSE is 1.599153, which indicates that the random forest leads to test predictions that are within around 1.599153 of the true miles per gallon. Using the `importance()` function and looking at the Variable Importance plot, we can see that `disp`, `hp`, and `wt` are the three most important variables in predicting `mpg`.
+
+\newln
+```{r, warning=FALSE, message=FALSE}
+library(randomForest)
+
+# Build the random forest model (subset of predictors at each split - by default it is a third of all predictors) and predict
+set.seed(1)
+rf.mtcars = randomForest(mpg ~ ., data=mtcars, subset=train, importance=TRUE, keep.forest=TRUE, ntree=100)
+yhat.rf = predict(rf.mtcars, newdata = mtcars[-train,])
+mean((yhat.rf-mtcars.test)^2)
+sqrt(mean((yhat.rf-mtcars.test)^2))
+
+# View importance of each variable in model
+importance(rf.mtcars)
+varImpPlot(rf.mtcars, main="Variable Importance")
+```
+
+\newpage
+
+## Problem 3
+
+We can see that the correlation of the predicted values between trees in a random forest when using a subset of the variables at each split is lower than the correlation of the predicted values between trees in a random forest when all variables are considered at each split. We show the first 6 rows and columns of each correlation matrix to see what it looks like, but to conserve space, we do not print the entire matrices. It is hard to tell by just looking at the correlation matrices, but if we find the median correlation for each model, we get a value of 0.6054061 for the bagging model and a value of only 0.3574135 for the random forest model. This shows us a little bit better that the bagging model has higher correlation between the trees than the random forest model which subsets the variables at each split.
+\newln
+```{r, warning=FALSE, message=FALSE}
+set.seed(1)
+bag.mtcars = randomForest(mpg ~ ., data=mtcars, subset=train, mtry=10, importance=TRUE, keep.forest=TRUE, ntree=100)
+yhat.bag = predict(bag.mtcars, newdata = mtcars[-train,])
+mean((yhat.bag-mtcars.test)^2)
+sqrt(mean((yhat.bag-mtcars.test)^2))
+
+cor(bag.mtcars$forest$nodepred)[1:6,1:6] # Considers all variables at each split
+cor(rf.mtcars$forest$nodepred)[1:6,1:6] # Considers a random subset of variables at each split
+median(cor(bag.mtcars$forest$nodepred))
+median(cor(rf.mtcars$forest$nodepred))
+```
+

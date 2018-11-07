@@ -1,0 +1,77 @@
+---
+title: "HW8"
+author: "Corey Kuhn"
+date: "4/24/2018"
+output: pdf_document
+---
+
+\newcommand{\newprob}
+    {
+    \vskip 1cm
+    }
+\newcommand{\newln}
+    {
+    \vskip .1cm
+    }
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+We perform hierarchical clustering on the MLB2014 dataset using different linkages and different distance measures. We try 3 different linkages, including Complete, Average, and Single. For each linkage, we perform hierarchical clustering using Euclidean, Maximum, and Manhattan distance measures. This gives us a total of 9 hierarchical models that we consider, which are plotted in the output below.   
+
+Looking at the plots using Complete linkage, it looks like the Maximum distance measure identifies two main groups, but the groups do not look very different, since the topmost vertical lines are not that long. The models using Complete and Manhattan distance measures, however, seem to find two groups that are much more different than the Maximum distance found.
+
+Looking at the plots using Average linkage, it looks like groups are much less clear in all of the methods using each distance measure. The Euclidean distance measure identifies two or three main groups, but one of the groups only contains 2 teams. The groups found in the methods using Complete and Manhattan distance measures are much less clear. The Average linkage model with Maximum distance seems to identify two main groups, but one of the groups only contains 3 teams. The Average linkage model with Manhattan distance seems to identify three main groups, but one of the groups only contains 1 teams, and the other 2 groups do not seem very different.
+
+Lastly, looking at the plots using Single linkage, regardless of the distance measure used, this linkage does not seem to result in clear groupings of the teams. This linkage may not be the best linkage for this particular data.
+
+Considering the plots of all combinations of distance measures and linkages, it looks like the hierarchical models using Complete linkage and either Euclidean or Manhattan distance are able to find 2,3, or 4 clear groups in the data. These two models seem like the best for this data.
+
+
+\newln
+\newln
+```{r}
+dat <- read.csv("~/Desktop/Desktop/Loyola Grad/Semester2/STAT488 - Predictive Analytics/HW8/MLB2014.csv")
+x <- dat[,-c(1,5)] # Get rid of team and G variable (same value for all teams)
+xsc <- scale(x)
+
+# Distance measures: Euclidean, Maximum, and Manahattan
+dE = dist(xsc, method="euclidean")
+dM = dist(xsc, method="maximum")
+dMan = dist(xsc, method="manhattan")
+
+# Linkage - Complete
+dE.complete <- hclust(dE, method = "complete")
+dM.complete <- hclust(dM, method = "complete")
+dMan.complete <- hclust(dMan, method = "complete")
+
+plot(dE.complete, main = "Complete, Euclidean", xlab="", sub="", cex=.9)
+plot(dM.complete, main = "Complete, Maximum", xlab="", sub="", cex=.9)
+plot(dMan.complete, main = "Complete, Manhattan", xlab="", sub="", cex=.9)
+
+# Linkage - Average
+dE.average <- hclust(dE, method = "average")
+dM.average <- hclust(dM, method = "average")
+dMan.average <- hclust(dMan, method = "average")
+
+plot(dE.average, main = "Average, Euclidean", xlab="", sub="", cex=.9)
+plot(dM.average, main = "Average, Maximum", xlab="", sub="", cex=.9)
+plot(dMan.average, main = "Average, Manhattan", xlab="", sub="", cex=.9)
+
+# Linkage - Single
+dE.single <- hclust(dE, method = "single")
+dM.single <- hclust(dM, method = "single")
+dMan.single <- hclust(dMan, method = "single")
+
+plot(dE.single, main = "Single, Euclidean", xlab="", sub="", cex=.9)
+plot(dM.single, main = "Single, Maximum", xlab="", sub="", cex=.9)
+plot(dMan.single, main = "Single, Manhattan", xlab="", sub="", cex=.9)
+```
+
+

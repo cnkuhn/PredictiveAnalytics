@@ -1,0 +1,114 @@
+---
+title: "HW1"
+author: "Corey Kuhn"
+date: "1/26/2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+## Problem 1 - Chapter 2, Exercise 2
+
+(a) This is a regression problem, and we are most interested in inference. n=500 and p=3 (X = profit, number employees, industry).
+
+(b) This is a classification problem, and we are most interested in prediction. n=20 and p=13 (X = price charged, marketing budget, competition price, 10 others).
+
+(c) This is a regression problem, and we are most interested in prediction. n=52 and p=3 (X = % change in US, % change in British, % change in German).
+
+## Problem 2 - Chapter 2, Exercise 4, Parts A and B only
+
+(a) 1 - Classifying the type of restaurant consumer could be useful to know how to market/advertise to each particular person. The response would be convenience eaters, social eaters, money-conscious eaters, etc. The predictors could be average check amount, restaurant most frequently visited, frequency of visits, etc. The goal in this case is prediction, since we are concerned with predicting the most accurate consumer group for each person. 2 - Classifying the level of risk a person is so that health insurance companies know whether or not they want to insure a person and how much to charge. The response would be high risk, moderate risk, or low risk and the predictors could be age, gender, average number of hospital visits a year, etc. The goal, once again, is prediction since we are interested in accurately predicting the level of risk. 3 - Classifying those at risk for dimentia can be helpful in determining which factors contribute most to developing dimentia. The response is whether or not someone has high risk of developing dimentia and the predictor variables could be average daily omega-3 consumption, age, highest level of education achieved, etc. The goal here is inference since we are looking to identify large contributions to risk of dimentia, rather than correctly predicting a specific response value for certain individuals.
+
+(b) 1 - Predicting the price of a car to have a good idea what to pay before going to buy that type of car. The response is the price of a car and the predictors could include brand, mpg, mileage, etc. We are interested in prediction here. 2 - Predicting crime rate in a city to determine factors encouraging crime. The response is the rate of crime occurrence and predictors include number of police stations, populatiom, state, etc. Here we are interested in inference because we care about the influence of each predictor on crime rate. 3 - Predicting the number of students who will live on campus so that the school is sure to have enough resources to provide for all the students living on campus. The response is the number of students living on campus and predictors include number of students who are freshman, number of students who are out-of-state, number of students with a job, etc. In this instance, we are interested in prediction and not so much the relationship between variables.
+
+## Problem 3
+
+0 observations were incorrectly classified. This happened because we used the exact same points to test the performance of our model as we used to generate the model. Since k=1, the nearest neighbor of each observation we are testing is itself. So even though though all points were correctly classified, I would not consider this good because this does not tell us anything about how the model performs when classifying new observations. We should use different points not used in building the model to test the performance of the model in classifying new observations.
+
+```{r}
+train <- read.csv("~/Desktop/Desktop/Loyola Grad/Semester2/STAT488 - Predictive Analytics/HW1/train.csv")
+test <- read.csv("~/Desktop/Desktop/Loyola Grad/Semester2/STAT488 - Predictive Analytics/HW1/test.csv")
+library(class)
+train.X <- train[,1:2]
+test.X <- test[,1:2]
+train.col <- train[,3]
+set.seed(1) # Because if ties among nearest neighbors, R breaks ties randomly
+knn.pred <- knn(train.X,train.X,train.col,k=1)
+table(knn.pred,train[,3])
+```
+
+719 observations, or about 41% of the observations in the test set were incorrectly classified. 41% is a high error rate, so this model is not very good and could be improved upon.
+
+```{r}
+set.seed(1) # Because if ties among nearest neighbors, R breaks ties randomly
+knn.pred <- knn(train.X,test.X,train.col,k=1)
+table(knn.pred,test[,3])
+367+352 # Number incorrectly classified
+(367+352)/(367+352+398+633) # Proportion incorrectly classified
+```
+
+Looking at the Error Rate vs. Number of Neighbors, k plot below, the error rate for the train data set has a steep increase when k increases from 1 to 2, and then has a more gradual increase as k increases further. The error rate for the test data has a quadratic shape, where very small values and very large values of k lead to a high error rate. We can find the minimum error rate on the test data curve to find the ideal value of k.
+
+```{r}
+knnError <- function(k){
+  set.seed(1234)
+  knn.pred.train <- knn(train.X,train.X,train.col,k=k)
+  tab.train <- table(knn.pred.train,train[,3])
+  error.train <- (tab.train[1,2]+tab.train[2,1])/sum(tab.train)
+  knn.pred.test <- knn(train.X,test.X,train.col,k=k)
+  tab.test <- table(knn.pred.test,test[,3])
+  error.test <- (tab.test[1,2]+tab.test[2,1])/sum(tab.test)
+  return(c(error.train,error.test))
+}
+error.train <- rep(NA,100)
+error.test <- rep(NA,100)
+k <- 1:100
+for(i in k){
+  error.train[i] <- knnError(i)[1]
+  error.test[i] <- knnError(i)[2]
+}
+plot(k,error.train,type="l",col="red",main="Error Rate vs. Number of Neighbors, k",ylim=c(0,.5),ylab="Error Rate",xlab="Number of Neighbors, k")
+lines(k,error.test,col="blue")
+legend(75,0.1,legend=c("Train Data", "Test Data"), col=c("red", "blue"), lty=1, cex=0.8)
+```
+
+## Problem 4
+
+```{r}
+plot(iris$Sepal.Length, iris$Sepal.Width, col=c("red","blue","green")[iris$Species],ylim=c(2,4.5),main="Iris Species")
+legend(6.5,4.5,legend=levels(iris$Species),col=c("red","blue","green"),pch=21)
+```
+
+## Problem 5
+
+See below for confusion matrix.
+
+```{r}
+library(MASS)
+lda.fit=lda(Species~Sepal.Length+Sepal.Width,data=iris)
+lda.pred=predict(lda.fit, iris[,1:2])
+lda.class <- lda.pred$class
+tab.iris <- table(lda.class,iris$Species)
+addmargins(tab.iris)
+```
+
+## Problem 6
+
+See graph below, where circles represent actual and crosses indicate predicted species. 
+
+```{r}
+plot(iris$Sepal.Length, iris$Sepal.Width, col=c("red","blue","green")[iris$Species],ylim=c(2,4.5),main="Actual and Predicted Species")
+legend(6.5,4.5,legend=levels(iris$Species),col=c("red","blue","green"),lty=c(1,1,1))
+points(iris$Sepal.Length, iris$Sepal.Width, col=c("red","blue","green")[lda.class],pch=4)
+```
+
+
+
+
